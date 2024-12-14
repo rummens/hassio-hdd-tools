@@ -2,6 +2,8 @@
 <h1>HDD Tools Hass.io Add-on</h1>
 </div>
 
+TODO Add Docs
+
 ### Configuration parameters
 
 | Parameter | Description |

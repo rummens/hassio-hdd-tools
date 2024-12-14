@@ -2,6 +2,8 @@
 <h1>HDD Tools Hass.io Add-on</h1>
 </div>
 
+TODO Add Docs
+
 ## General
 
 This add-on provides information about HDD Temperature from S.M.A.R.T using smartmontools.
