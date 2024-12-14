@@ -75,7 +75,7 @@ DEVICE_FOUND=false
 
 for path in "${MERGED_HDD_PATHS[@]}"; do
     if [ -b "$path" ]; then
-        echo "[$(date)][INFO] Device $path found - starting CRON"
+        echo "[$(date)][INFO] Device $path found"
         DEVICE_FOUND=true
     else
         echo "[$(date)][WARNING] Device $path not found"
@@ -83,6 +83,7 @@ for path in "${MERGED_HDD_PATHS[@]}"; do
 done
 
 if [ "$DEVICE_FOUND" = true ]; then
+    echo "[$(date)][INFO] At least one Device found - starting CRON"
     crond -f
 else
     echo "[$(date)][INFO] No devices found - exiting"

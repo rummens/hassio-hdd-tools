@@ -2,25 +2,28 @@
 <h1>HDD Tools Hass.io Add-on</h1>
 </div>
 
-TODO Add Docs
-
 ### Configuration parameters
 
-| Parameter | Description |
-|-----------|-------------|
-| sensor_state_type | Type of the sensor which is exposed to home-assistant. Can be `smart_state` or `temperature`.
-| sensor_name | Name for the sensor which is exposed to home-assistant. For `smart_state` it must begin with `binary_sensor.`, for `temperature` it must begin with `sensor.`.
-| friendly_name | Friendly name for the sensor which is exposed to home-assistant
-| hdd_path | Path to drive to monitor
-| device_type | Type of block device which `smartctl` will try to use for communication. Default `auto`. Check https://www.smartmontools.org/wiki/USB
-| attributes_format | One of `object` or `list`. See more details [here](#attributes).
-| attributes_property | Attribute you want to merge with the attributes in your sensor. Check the `output_file` for the available properties.
-| check_period | Interval in minutes / how often to read temperature
-| database_update | Flag to enable the update of the smartmontools drives database
-| database_update_period | Interval in hours / how often the drives database is updated
-| performance_check | Flag to enable or disable the execution of performance check at startup
-| debug | Flag to enable or disable debugging. Activate this if you want to debug which property from the JSON output of `smartctl` you want to be merged to the sensor.
-| output_file | Log file
+| Parameter                     | Description                                                                                                                                                    |
+|-------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| sensor_state_type             | Type of the sensor which is exposed to home-assistant. Can be `smart_state` or `temperature`.                                                                  |
+| additional_sensor_state_types | Type of the sensor for additional drives. See below for details.                                                                                               |
+| sensor_name                   | Name for the sensor which is exposed to home-assistant. For `smart_state` it must begin with `binary_sensor.`, for `temperature` it must begin with `sensor.`. |
+| additional_sensor_names       | Name for the sensor for additional drives. See below for details.                                                                                              |
+| friendly_name                 | Friendly name for the sensor which is exposed to home-assistant                                                                                                |
+| additional_friendly_names     | Friendly name for the sensor for additional drives. See below for details.                                                                                     |
+| hdd_path                      | Path to drive to monitor                                                                                                                                       |
+| additional_hdd_paths          | Path to additional drives. See below for details.                                                                                                              |
+| device_type                   | Type of block device which `smartctl` will try to use for communication. Default `auto`. Check https://www.smartmontools.org/wiki/USB                          |
+| additional_device_types       | Type of block device for additional drives. See below for details.                                                                                             |
+| attributes_format             | One of `object` or `list`. See more details [here](#attributes).                                                                                               |
+| attributes_property           | Attribute you want to merge with the attributes in your sensor. Check the `output_file` for the available properties.                                          |
+| check_period                  | Interval in minutes / how often to read temperature                                                                                                            |
+| database_update               | Flag to enable the update of the smartmontools drives database                                                                                                 |
+| database_update_period        | Interval in hours / how often the drives database is updated                                                                                                   |
+| performance_check             | Flag to enable or disable the execution of performance check at startup                                                                                        |
+| debug                         | Flag to enable or disable debugging. Activate this if you want to debug which property from the JSON output of `smartctl` you want to be merged to the sensor. |
+| output_file                   | Log file                                                                                                                                                       |
 
 ### Attributes
 
@@ -589,4 +592,62 @@ The addon configuration for this setup would look like:
 ```yaml
 attributes_property: ata_smart_attributes.table
 attributes_format: list
+```
+
+### Adding additional drives
+To keep backward compatibility, the addon supports multiple drives via the `additional_X`  configuration parameters. 
+This ensures that the addon can be used with multiple drives without breaking existing setups with a single drive. 
+
+To add additional drives, you need to add the following configuration parameters, the order of the values inside each list important. 
+Each value in the list corresponds to the same index in the other lists (e.g. the first sensor_name in the additional_sensor_names list will map to the first path in the additional_hdd_paths list. The second name will map to the second path and so).
+
+```yaml
+additional_hdd_paths:
+    - /dev/sdb
+    - ...
+additional_sensor_state_types:
+    - smart_state
+    - ...
+additional_sensor_names:
+    - binary_sensor.hdd_temp_sdb
+    - ...
+additional_friendly_names:
+    - HDD Temp SDB
+    - ...
+additional_device_types:
+    - auto
+    - ...
+```
+
+Filling these values using UI can be done but it's quite error-prone. Therefore, it is recommended to use the configuration file for this.
+The path of the various disks can be copied from the Supervisor -> System -> Hardware page, using a tool like `lsblk` or any other method you prefer. 
+
+It is also irrelevant if you use the `/dev/disk/by-id/` or `/dev/sdX` paths, the addon will handle both. However since the `/dev/disk/by-id/` paths are more stable (as the `dev/sdX` pass can be re-assigned at boot or if the disks have been physically swapped), it is recommended to use IDs.
+
+A full example configuration file with two drives would look like this:
+
+```yaml
+sensor_state_type: temperature
+additional_sensor_state_types:
+  - temperature
+sensor_name: sensor.backup_disk_1
+additional_sensor_names:
+  - sensor.backup_disk_2
+friendly_name: Backup Disk 1
+additional_friendly_names:
+  - Backup Disk 2
+hdd_path: /dev/disk/by-id/ata-ABC_XXXXXXXXXXXXXXXXXXX1
+additional_hdd_paths:
+  - /dev/disk/by-id/ata-ABC_XXXXXXXXXXXXXXXXXXX2
+device_type: auto
+additional_device_types: 
+  - auto
+attributes_format: list
+attributes_property: ata_smart_attributes.table
+check_period: 720
+database_update: true
+database_update_period: 168
+performance_check: false
+debug: false
+output_file: temp.log
 ```

@@ -1,34 +1,25 @@
-
 CONFIG_PATH=/data/options.json
 SMARTCTL_BINARY=/usr/sbin/smartctl
 
-# Test configuration
+# Test configuration (do not commit)
 #CONFIG_PATH=./test_options.json
 #SMARTCTL_BINARY=/opt/homebrew/bin/smartctl
 
 # Get configuration
 SENSOR_STATE_TYPE="$(jq --raw-output '.sensor_state_type' $CONFIG_PATH)"
-ADDITIONAL_SENSOR_STATE_TYPES="$(jq --raw-output '.additional_sensor_state_types[]' $CONFIG_PATH)"
+MERGED_SENSOR_STATE_TYPES=$(jq --arg newSensor "$SENSOR_STATE_TYPE" '.additional_sensor_state_types + [$newSensor]' "$CONFIG_PATH")
 SENSOR_NAME="$(jq --raw-output '.sensor_name' $CONFIG_PATH)"
-ADDITIONAL_SENSOR_NAMES="$(jq --raw-output '.additional_sensor_names[]' $CONFIG_PATH)"
+MERGED_SENSOR_NAMES=$(jq --arg newSensor "$SENSOR_NAME" '.additional_sensor_names + [$newSensor]' "$CONFIG_PATH")
 FRIENDLY_NAME="$(jq --raw-output '.friendly_name' $CONFIG_PATH)"
-ADDITIONAL_FRIENDLY_NAMES="$(jq --raw-output '.additional_friendly_names[]' $CONFIG_PATH)"
+MERGED_FRIENDLY_NAMES=$(jq --arg newFriendly "$FRIENDLY_NAME" '.additional_friendly_names + [$newFriendly]' "$CONFIG_PATH")
 HDD_PATH="$(jq --raw-output '.hdd_path' $CONFIG_PATH)"
-ADDITIONAL_HDD_PATHS="$(jq --raw-output '.additional_hdd_paths[]' $CONFIG_PATH)"
+MERGED_HDD_PATHS=$(jq --arg newHdd "$HDD_PATH" '.additional_hdd_paths + [$newHdd]' "$CONFIG_PATH")
 DEVICE_TYPE="$(jq --raw-output '.device_type' $CONFIG_PATH)"
-ADDITIONAL_DEVICE_TYPES="$(jq --raw-output '.additional_device_types[]' $CONFIG_PATH)"
+MERGED_DEVICE_TYPES=$(jq --arg newDevice "$DEVICE_TYPE" '.additional_device_types + [$newDevice]' "$CONFIG_PATH")
 DEBUG="$(jq --raw-output '.debug' $CONFIG_PATH)"
 OUTPUT_FILE="$(jq --raw-output '.output_file' $CONFIG_PATH)"
 ATTRIBUTES_PROPERTY="$(jq --raw-output '.attributes_property' $CONFIG_PATH)"
 ATTRIBUTES_FORMAT="$(jq --raw-output '.attributes_format' $CONFIG_PATH)"
-
-
-# Merge the single values and the arrays into new arrays
-MERGED_SENSOR_STATE_TYPES=("$SENSOR_STATE_TYPE" "${ADDITIONAL_SENSOR_STATE_TYPES[@]}")
-MERGED_SENSOR_NAMES=("$SENSOR_NAME" "${ADDITIONAL_SENSOR_NAMES[@]}")
-MERGED_FRIENDLY_NAMES=("$FRIENDLY_NAME" "${ADDITIONAL_FRIENDLY_NAMES[@]}")
-MERGED_HDD_PATHS=("$HDD_PATH" "${ADDITIONAL_HDD_PATHS[@]}")
-MERGED_DEVICE_TYPES=("$DEVICE_TYPE" "${ADDITIONAL_DEVICE_TYPES[@]}")
 
 if [ "$DEBUG" = "true" ]; then
     # Print the merged arrays
@@ -37,23 +28,43 @@ if [ "$DEBUG" = "true" ]; then
     echo "Merged Friendly Names: ${MERGED_FRIENDLY_NAMES[*]}"
     echo "Merged HDD Paths: ${MERGED_HDD_PATHS[*]}"
     echo "Merged Device Types: ${MERGED_DEVICE_TYPES[*]}"
-
 fi
 
-for i in "${!MERGED_HDD_PATHS[@]}"; do
+# Check if all merged arrays have the same length using length_hdd_paths as reference
+length_sensor_state_types=$(echo "$MERGED_SENSOR_STATE_TYPES" | jq 'length')
+length_sensor_names=$(echo "$MERGED_SENSOR_NAMES" | jq 'length')
+length_friendly_names=$(echo "$MERGED_FRIENDLY_NAMES" | jq 'length')
+length_device_types=$(echo "$MERGED_DEVICE_TYPES" | jq 'length')
+length_hdd_paths=$(echo "$MERGED_HDD_PATHS" | jq 'length')
 
-    echo "\n\n[$(date)][INFO] Processing disk at list index $i with path ${MERGED_HDD_PATHS[$i]}"
+if [ "$length_hdd_paths" -ne "$length_sensor_state_types" ] || \
+   [ "$length_hdd_paths" -ne "$length_sensor_names" ] || \
+   [ "$length_hdd_paths" -ne "$length_friendly_names" ] || \
+   [ "$length_hdd_paths" -ne "$length_device_types" ]; then
+    echo "[$(date)][ERROR] Merged arrays have different lengths:"
+    echo "HDD Paths: $length_hdd_paths"
+    echo "Sensor State Types: $length_sensor_state_types"
+    echo "Sensor Names: $length_sensor_names"
+    echo "Friendly Names: $length_friendly_names"
+    echo "Device Types: $length_device_types"
+    exit 1
+fi
 
-    HDD_PATH="${MERGED_HDD_PATHS[$i]}"
-    SENSOR_STATE_TYPE="${MERGED_SENSOR_STATE_TYPES[$i]}"
-    SENSOR_NAME="${MERGED_SENSOR_NAMES[$i]}"
-    FRIENDLY_NAME="${MERGED_FRIENDLY_NAMES[$i]}"
-    DEVICE_TYPE="${MERGED_DEVICE_TYPES[$i]}"
+# Loop all HDD paths and get the SMART data
+index=0
+for HDD_PATH in $(echo "$MERGED_HDD_PATHS" | jq -r '.[]'); do
+
+    printf "\n\n[$(date)][INFO] Processing disk at list index %s with path %s" "$index" "$HDD_PATH"
+
+    SENSOR_STATE_TYPE=$(echo "$MERGED_SENSOR_STATE_TYPES" | jq -r --argjson idx "$index" '.[$idx]')
+    SENSOR_NAME=$(echo "$MERGED_SENSOR_NAMES" | jq -r --argjson idx "$index" '.[$idx]')
+    FRIENDLY_NAME=$(echo "$MERGED_FRIENDLY_NAMES" | jq -r --argjson idx "$index" '.[$idx]')
+    DEVICE_TYPE=$(echo "$MERGED_DEVICE_TYPES" | jq -r --argjson idx "$index" '.[$idx]')
 
     SMARTCTL_OUTPUT=$($SMARTCTL_BINARY -a "$HDD_PATH" -d "$DEVICE_TYPE" --json)
 
     if [ "$DEBUG" = "true" ]; then
-        echo "$SMARTCTL_OUTPUT" > "/share/hdd_tools/${OUTPUT_FILE}_$i"
+        echo "$SMARTCTL_OUTPUT" > "/share/hdd_tools/${OUTPUT_FILE}_$index"
     fi
 
     if ! [ -z "$SENSOR_STATE_TYPE" ]; then
@@ -121,4 +132,6 @@ for i in "${!MERGED_HDD_PATHS[@]}"; do
              -w "[$(date)][INFO] Sensor update response code: %{http_code}\n" \
              "http://supervisor/core/api/states/${SENSOR_NAME}"
     fi
+
+    index=$((index + 1))
 done

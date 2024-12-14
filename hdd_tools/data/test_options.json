@@ -8,7 +8,10 @@
       "hdd_path": "/dev/disk0",
       "additional_hdd_paths": ["/dev/disk3"],
       "device_type": "auto",
-      "additional_device_types": ["auto"],
+      "additional_device_types":
+      [
+        "auto"
+      ],
       "attributes_format": "object",
       "attributes_property": "nvme_smart_health_information_log",
       "check_period": 1,
