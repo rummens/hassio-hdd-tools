@@ -11,7 +11,10 @@ PERFORMANCE_CHECK="$(jq --raw-output '.performance_check' $CONFIG_PATH)"
 echo "[$(date)][INFO] Configuration - performance check enabled: $PERFORMANCE_CHECK"
 
 HDD_PATH="$(jq --raw-output '.hdd_path' $CONFIG_PATH)"
-echo "[$(date)][INFO] Configuration - disk path: $HDD_PATH" 
+echo "[$(date)][INFO] Configuration - disk path: $HDD_PATH"
+
+ADDITIONAL_HDD_PATHS="$(jq --raw-output '.additional_hdd_paths' $CONFIG_PATH)"
+echo "[$(date)][INFO] Configuration - additional disk paths: $ADDITIONAL_HDD_PATHS"
 
 DEVICE_TYPE="$(jq --raw-output '.device_type' $CONFIG_PATH)"
 echo "[$(date)][INFO] Configuration - device type: $DEVICE_TYPE"
