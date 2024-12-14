@@ -16,22 +16,15 @@ echo "[$(date)][INFO] Configuration - performance check enabled: $PERFORMANCE_CH
 HDD_PATH="$(jq --raw-output '.hdd_path' $CONFIG_PATH)"
 echo "[$(date)][INFO] Configuration - disk path: $HDD_PATH"
 
-ADDITIONAL_HDD_PATHS="$(jq --raw-output '.additional_hdd_paths' $CONFIG_PATH)"
+ADDITIONAL_HDD_PATHS="$(jq --raw-output '.additional_hdd_paths[]' $CONFIG_PATH)"
 echo "[$(date)][INFO] Configuration - additional disk paths: $ADDITIONAL_HDD_PATHS"
 
 # Merge HDD_PATH and ADDITIONAL_HDD_PATHS into a single list
-MERGED_HDD_PATHS=("$HDD_PATH")
-if [ -n "$ADDITIONAL_HDD_PATHS" ]; then
-    IFS=',' read -r -a ADDITIONAL_HDD_PATHS_ARRAY <<< "$ADDITIONAL_HDD_PATHS"
-    MERGED_HDD_PATHS+=("${ADDITIONAL_HDD_PATHS_ARRAY[@]}")
-fi
+MERGED_HDD_PATHS=("$HDD_PATH" "${ADDITIONAL_HDD_PATHS[@]}")
 echo "[$(date)][INFO] Configuration - Merged HDD Paths: ${MERGED_HDD_PATHS[*]}"
 
 DEVICE_TYPE="$(jq --raw-output '.device_type' $CONFIG_PATH)"
 echo "[$(date)][INFO] Configuration - device type: $DEVICE_TYPE"
-
-ADDITIONAL_DEVICE_TYPES="$(jq --raw-output '.additional_device_types' $CONFIG_PATH)"
-echo "[$(date)][INFO] Configuration - additional device types: $ADDITIONAL_DEVICE_TYPES"
 
 SMART_CHECK_PERIOD="$(jq --raw-output '.check_period' $CONFIG_PATH)"
 echo "[$(date)][INFO] Configuration - check period: $SMART_CHECK_PERIOD"

@@ -1,34 +1,34 @@
+
 CONFIG_PATH=/data/options.json
+SMARTCTL_BINARY=/usr/sbin/smartctl
+
+# Test configuration
+#CONFIG_PATH=./test_options.json
+#SMARTCTL_BINARY=/opt/homebrew/bin/smartctl
 
 # Get configuration
 SENSOR_STATE_TYPE="$(jq --raw-output '.sensor_state_type' $CONFIG_PATH)"
-ADDITIONAL_SENSOR_STATE_TYPES="$(jq --raw-output '.additional_sensor_state_types' $CONFIG_PATH)"
+ADDITIONAL_SENSOR_STATE_TYPES="$(jq --raw-output '.additional_sensor_state_types[]' $CONFIG_PATH)"
 SENSOR_NAME="$(jq --raw-output '.sensor_name' $CONFIG_PATH)"
-ADDITIONAL_SENSOR_NAMES="$(jq --raw-output '.additional_sensor_names' $CONFIG_PATH)"
+ADDITIONAL_SENSOR_NAMES="$(jq --raw-output '.additional_sensor_names[]' $CONFIG_PATH)"
 FRIENDLY_NAME="$(jq --raw-output '.friendly_name' $CONFIG_PATH)"
-ADDITIONAL_FRIENDLY_NAMES="$(jq --raw-output '.additional_friendly_names' $CONFIG_PATH)"
+ADDITIONAL_FRIENDLY_NAMES="$(jq --raw-output '.additional_friendly_names[]' $CONFIG_PATH)"
 HDD_PATH="$(jq --raw-output '.hdd_path' $CONFIG_PATH)"
-ADDITIONAL_HDD_PATHS="$(jq --raw-output '.additional_hdd_paths' $CONFIG_PATH)"
+ADDITIONAL_HDD_PATHS="$(jq --raw-output '.additional_hdd_paths[]' $CONFIG_PATH)"
 DEVICE_TYPE="$(jq --raw-output '.device_type' $CONFIG_PATH)"
-ADDITIONAL_DEVICE_TYPES="$(jq --raw-output '.additional_device_types' $CONFIG_PATH)"
+ADDITIONAL_DEVICE_TYPES="$(jq --raw-output '.additional_device_types[]' $CONFIG_PATH)"
 DEBUG="$(jq --raw-output '.debug' $CONFIG_PATH)"
 OUTPUT_FILE="$(jq --raw-output '.output_file' $CONFIG_PATH)"
 ATTRIBUTES_PROPERTY="$(jq --raw-output '.attributes_property' $CONFIG_PATH)"
 ATTRIBUTES_FORMAT="$(jq --raw-output '.attributes_format' $CONFIG_PATH)"
 
-# Convert the additional values to arrays
-IFS=' ' read -r -a ADDITIONAL_SENSOR_STATE_TYPES_ARRAY <<< "$ADDITIONAL_SENSOR_STATE_TYPES"
-IFS=' ' read -r -a ADDITIONAL_SENSOR_NAMES_ARRAY <<< "$ADDITIONAL_SENSOR_NAMES"
-IFS=' ' read -r -a ADDITIONAL_FRIENDLY_NAMES_ARRAY <<< "$ADDITIONAL_FRIENDLY_NAMES"
-IFS=' ' read -r -a ADDITIONAL_HDD_PATHS_ARRAY <<< "$ADDITIONAL_HDD_PATHS"
-IFS=' ' read -r -a ADDITIONAL_DEVICE_TYPES_ARRAY <<< "$ADDITIONAL_DEVICE_TYPES"
 
 # Merge the single values and the arrays into new arrays
-MERGED_SENSOR_STATE_TYPES=("$SENSOR_STATE_TYPE" "${ADDITIONAL_SENSOR_STATE_TYPES_ARRAY[@]}")
-MERGED_SENSOR_NAMES=("$SENSOR_NAME" "${ADDITIONAL_SENSOR_NAMES_ARRAY[@]}")
-MERGED_FRIENDLY_NAMES=("$FRIENDLY_NAME" "${ADDITIONAL_FRIENDLY_NAMES_ARRAY[@]}")
-MERGED_HDD_PATHS=("$HDD_PATH" "${ADDITIONAL_HDD_PATHS_ARRAY[@]}")
-MERGED_DEVICE_TYPES=("$DEVICE_TYPE" "${ADDITIONAL_DEVICE_TYPES_ARRAY[@]}")
+MERGED_SENSOR_STATE_TYPES=("$SENSOR_STATE_TYPE" "${ADDITIONAL_SENSOR_STATE_TYPES[@]}")
+MERGED_SENSOR_NAMES=("$SENSOR_NAME" "${ADDITIONAL_SENSOR_NAMES[@]}")
+MERGED_FRIENDLY_NAMES=("$FRIENDLY_NAME" "${ADDITIONAL_FRIENDLY_NAMES[@]}")
+MERGED_HDD_PATHS=("$HDD_PATH" "${ADDITIONAL_HDD_PATHS[@]}")
+MERGED_DEVICE_TYPES=("$DEVICE_TYPE" "${ADDITIONAL_DEVICE_TYPES[@]}")
 
 if [ "$DEBUG" = "true" ]; then
     # Print the merged arrays
@@ -42,7 +42,7 @@ fi
 
 for i in "${!MERGED_HDD_PATHS[@]}"; do
 
-    echo "[$(date)][INFO] Processing disk at list index $i with path ${MERGED_HDD_PATHS[$i]}"
+    echo "\n\n[$(date)][INFO] Processing disk at list index $i with path ${MERGED_HDD_PATHS[$i]}"
 
     HDD_PATH="${MERGED_HDD_PATHS[$i]}"
     SENSOR_STATE_TYPE="${MERGED_SENSOR_STATE_TYPES[$i]}"
@@ -50,7 +50,7 @@ for i in "${!MERGED_HDD_PATHS[@]}"; do
     FRIENDLY_NAME="${MERGED_FRIENDLY_NAMES[$i]}"
     DEVICE_TYPE="${MERGED_DEVICE_TYPES[$i]}"
 
-    SMARTCTL_OUTPUT=$(/usr/sbin/smartctl -a "$HDD_PATH" -d "$DEVICE_TYPE" --json)
+    SMARTCTL_OUTPUT=$($SMARTCTL_BINARY -a "$HDD_PATH" -d "$DEVICE_TYPE" --json)
 
     if [ "$DEBUG" = "true" ]; then
         echo "$SMARTCTL_OUTPUT" > "/share/hdd_tools/${OUTPUT_FILE}_$i"
@@ -112,14 +112,13 @@ for i in "${!MERGED_HDD_PATHS[@]}"; do
     if [ "$DEBUG" = "true" ]; then
         echo "[$(date)][DEBUG] Sensor data which would be pushed to home-assistant and exposed as \"$SENSOR_NAME\": $SENSOR_DATA"
         echo "[$(date)][DEBUG] debug is enabled, sensor data is not published to home-assistant!"
-        exit 0;
+    else
+      curl -X POST -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+             -s \
+             -o /dev/null \
+             -H "Content-Type: application/json" \
+             -d "$SENSOR_DATA" \
+             -w "[$(date)][INFO] Sensor update response code: %{http_code}\n" \
+             "http://supervisor/core/api/states/${SENSOR_NAME}"
     fi
-
-    curl -X POST -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
-           -s \
-           -o /dev/null \
-           -H "Content-Type: application/json" \
-           -d "$SENSOR_DATA" \
-           -w "[$(date)][INFO] Sensor update response code: %{http_code}\n" \
-           "http://supervisor/core/api/states/${SENSOR_NAME}"
 done
