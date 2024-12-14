@@ -13,7 +13,9 @@
         "auto"
       ],
       "attributes_format": "object",
+      "additional_attributes_formats": ["object"],
       "attributes_property": "nvme_smart_health_information_log",
+      "additional_attributes_properties": ["nvme_smart_health_information_log"],
       "check_period": 1,
       "database_update": true,
       "database_update_period": 168,

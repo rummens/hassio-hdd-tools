@@ -19,7 +19,9 @@ MERGED_DEVICE_TYPES=$(jq --arg newDevice "$DEVICE_TYPE" '.additional_device_type
 DEBUG="$(jq --raw-output '.debug' $CONFIG_PATH)"
 OUTPUT_FILE="$(jq --raw-output '.output_file' $CONFIG_PATH)"
 ATTRIBUTES_PROPERTY="$(jq --raw-output '.attributes_property' $CONFIG_PATH)"
+MERGED_ATTRIBUTES_PROPERTY=$(jq --arg newAttributes "$ATTRIBUTES_PROPERTY" '.additional_attributes_properties + [$newAttributes]' "$CONFIG_PATH")
 ATTRIBUTES_FORMAT="$(jq --raw-output '.attributes_format' $CONFIG_PATH)"
+MERGED_ATTRIBUTES_FORMAT=$(jq --arg newAttributesFormat "$ATTRIBUTES_FORMAT" '.additional_attributes_formats + [$newAttributesFormat]' "$CONFIG_PATH")
 
 if [ "$DEBUG" = "true" ]; then
     # Print the merged arrays
@@ -28,6 +30,8 @@ if [ "$DEBUG" = "true" ]; then
     echo "Merged Friendly Names: ${MERGED_FRIENDLY_NAMES[*]}"
     echo "Merged HDD Paths: ${MERGED_HDD_PATHS[*]}"
     echo "Merged Device Types: ${MERGED_DEVICE_TYPES[*]}"
+    echo "Merged Attributes Properties: ${MERGED_ATTRIBUTES_PROPERTY[*]}"
+    echo "Merged Attributes Formats: ${MERGED_ATTRIBUTES_FORMAT[*]}"
 fi
 
 # Check if all merged arrays have the same length using length_hdd_paths as reference
@@ -36,17 +40,23 @@ length_sensor_names=$(echo "$MERGED_SENSOR_NAMES" | jq 'length')
 length_friendly_names=$(echo "$MERGED_FRIENDLY_NAMES" | jq 'length')
 length_device_types=$(echo "$MERGED_DEVICE_TYPES" | jq 'length')
 length_hdd_paths=$(echo "$MERGED_HDD_PATHS" | jq 'length')
+length_attributes_properties=$(echo "$MERGED_ATTRIBUTES_PROPERTY" | jq 'length')
+length_attributes_formats=$(echo "$MERGED_ATTRIBUTES_FORMAT" | jq 'length')
 
 if [ "$length_hdd_paths" -ne "$length_sensor_state_types" ] || \
    [ "$length_hdd_paths" -ne "$length_sensor_names" ] || \
    [ "$length_hdd_paths" -ne "$length_friendly_names" ] || \
-   [ "$length_hdd_paths" -ne "$length_device_types" ]; then
+   [ "$length_hdd_paths" -ne "$length_device_types" ] || \
+   [ "$length_hdd_paths" -ne "$length_attributes_properties" ] || \
+   [ "$length_hdd_paths" -ne "$length_attributes_formats" ]; then
     echo "[$(date)][ERROR] Merged arrays have different lengths:"
     echo "HDD Paths: $length_hdd_paths"
     echo "Sensor State Types: $length_sensor_state_types"
     echo "Sensor Names: $length_sensor_names"
     echo "Friendly Names: $length_friendly_names"
     echo "Device Types: $length_device_types"
+    echo "Attributes Properties: $length_attributes_properties"
+    echo "Attributes Formats: $length_attributes_formats"
     exit 1
 fi
 
@@ -60,6 +70,8 @@ for HDD_PATH in $(echo "$MERGED_HDD_PATHS" | jq -r '.[]'); do
     SENSOR_NAME=$(echo "$MERGED_SENSOR_NAMES" | jq -r --argjson idx "$index" '.[$idx]')
     FRIENDLY_NAME=$(echo "$MERGED_FRIENDLY_NAMES" | jq -r --argjson idx "$index" '.[$idx]')
     DEVICE_TYPE=$(echo "$MERGED_DEVICE_TYPES" | jq -r --argjson idx "$index" '.[$idx]')
+    ATTRIBUTES_FORMAT=$(echo "$MERGED_ATTRIBUTES_FORMAT" | jq -r --argjson idx "$index" '.[$idx]')
+    ATTRIBUTES_PROPERTY=$(echo "$MERGED_ATTRIBUTES_PROPERTY" | jq -r --argjson idx "$index" '.[$idx]')
 
     SMARTCTL_OUTPUT=$($SMARTCTL_BINARY -a "$HDD_PATH" -d "$DEVICE_TYPE" --json)
 
