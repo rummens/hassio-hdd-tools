@@ -7,6 +7,9 @@ CONFIG_PATH=/data/options.json
 SENSOR_STATE_TYPE="$(jq --raw-output '.sensor_state_type' $CONFIG_PATH)"
 echo "[$(date)][INFO] Configuration - sensor state type: $SENSOR_STATE_TYPE"
 
+ADDITIONAL_SENSOR_STATE_TYPE="$(jq --raw-output '.additional_sensor_state_types' $CONFIG_PATH)"
+echo "[$(date)][INFO] Configuration - additional sensor state type: $ADDITIONAL_SENSOR_STATE_TYPE"
+
 PERFORMANCE_CHECK="$(jq --raw-output '.performance_check' $CONFIG_PATH)"
 echo "[$(date)][INFO] Configuration - performance check enabled: $PERFORMANCE_CHECK"
 
@@ -16,8 +19,19 @@ echo "[$(date)][INFO] Configuration - disk path: $HDD_PATH"
 ADDITIONAL_HDD_PATHS="$(jq --raw-output '.additional_hdd_paths' $CONFIG_PATH)"
 echo "[$(date)][INFO] Configuration - additional disk paths: $ADDITIONAL_HDD_PATHS"
 
+# Merge HDD_PATH and ADDITIONAL_HDD_PATHS into a single list
+MERGED_HDD_PATHS=("$HDD_PATH")
+if [ -n "$ADDITIONAL_HDD_PATHS" ]; then
+    IFS=',' read -r -a ADDITIONAL_HDD_PATHS_ARRAY <<< "$ADDITIONAL_HDD_PATHS"
+    MERGED_HDD_PATHS+=("${ADDITIONAL_HDD_PATHS_ARRAY[@]}")
+fi
+echo "[$(date)][INFO] Configuration - Merged HDD Paths: ${MERGED_HDD_PATHS[*]}"
+
 DEVICE_TYPE="$(jq --raw-output '.device_type' $CONFIG_PATH)"
 echo "[$(date)][INFO] Configuration - device type: $DEVICE_TYPE"
+
+ADDITIONAL_DEVICE_TYPES="$(jq --raw-output '.additional_device_types' $CONFIG_PATH)"
+echo "[$(date)][INFO] Configuration - additional device types: $ADDITIONAL_DEVICE_TYPES"
 
 SMART_CHECK_PERIOD="$(jq --raw-output '.check_period' $CONFIG_PATH)"
 echo "[$(date)][INFO] Configuration - check period: $SMART_CHECK_PERIOD"
@@ -64,12 +78,22 @@ fi
 echo "[$(date)][INFO] Apply cron tab"
 crontab /etc/cron.d/cron
 
-if [ -b $HDD_PATH ]; then 
-    echo "[$(date)][INFO] Device $HDD_PATH found - starting CRON"    
+DEVICE_FOUND=false
+
+for path in "${MERGED_HDD_PATHS[@]}"; do
+    if [ -b "$path" ]; then
+        echo "[$(date)][INFO] Device $path found - starting CRON"
+        DEVICE_FOUND=true
+    else
+        echo "[$(date)][WARNING] Device $path not found"
+    fi
+done
+
+if [ "$DEVICE_FOUND" = true ]; then
     crond -f
 else
-    echo "[$(date)][INFO] Device $HDD_PATH not found - exiting"    
+    echo "[$(date)][INFO] No devices found - exiting"
     exit 1
 fi
 
-echo $(date) "HDD Tools exit"
+echo "$(date) HDD Tools exit"

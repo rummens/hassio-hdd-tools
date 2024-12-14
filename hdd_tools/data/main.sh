@@ -4,6 +4,13 @@ SENSOR_STATE_TYPE="$(jq --raw-output '.sensor_state_type' $CONFIG_PATH)"
 SENSOR_NAME="$(jq --raw-output '.sensor_name' $CONFIG_PATH)"
 FRIENDLY_NAME="$(jq --raw-output '.friendly_name' $CONFIG_PATH)"
 HDD_PATH="$(jq --raw-output '.hdd_path' $CONFIG_PATH)"
+ADDITIONAL_HDD_PATHS="$(jq --raw-output '.additional_hdd_paths' $CONFIG_PATH)"
+# Merge HDD_PATH and ADDITIONAL_HDD_PATHS into a single list
+MERGED_HDD_PATHS=("$HDD_PATH")
+if [ -n "$ADDITIONAL_HDD_PATHS" ]; then
+    IFS=',' read -r -a ADDITIONAL_HDD_PATHS_ARRAY <<< "$ADDITIONAL_HDD_PATHS"
+    MERGED_HDD_PATHS+=("${ADDITIONAL_HDD_PATHS_ARRAY[@]}")
+fi
 DEVICE_TYPE="$(jq --raw-output '.device_type' $CONFIG_PATH)"
 DEBUG="$(jq --raw-output '.debug' $CONFIG_PATH)"
 OUTPUT_FILE="$(jq --raw-output '.output_file' $CONFIG_PATH)"
