@@ -41,7 +41,7 @@
       "friendly_name": "str",
       "additional_friendly_names": ["str"],
       "hdd_path": "device(subsystem=block)",
-      "additional_hdd_paths": ["str"],
+      "additional_hdd_paths": ["device(subsystem=block)"],
       "device_type": "str",
       "additional_device_types": ["str"],
       "attributes_format": "list(object|list)",
