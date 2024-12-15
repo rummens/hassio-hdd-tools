@@ -619,6 +619,12 @@ additional_friendly_names:
 additional_device_types:
     - auto
     - ...
+additional_attributes_formats:
+    - list
+    - ...
+additional_attributes_properties:
+    - ata_smart_attributes.table
+    - ...
 ```
 
 Filling these values using UI can be done, but it's quite error-prone since it does not seem to accept duplicate list entries which are likely required here. Therefore, it is recommended to use the configuration file for this.
